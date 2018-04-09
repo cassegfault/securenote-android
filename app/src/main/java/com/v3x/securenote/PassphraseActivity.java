@@ -25,6 +25,13 @@ public class PassphraseActivity extends AppCompatActivity {
                 testUnlock();
             }
         });
+        Button loginButton = findViewById(R.id.passphrase_gologin);
+        loginButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                goLogin();
+            }
+        });
     }
 
     private void testUnlock(){
@@ -36,5 +43,10 @@ public class PassphraseActivity extends AppCompatActivity {
         } else {
             mPassphrase.setError(getString(R.string.error_bad_credentials));
         }
+    }
+
+    private void goLogin(){
+        Intent mIntent = new Intent(this,LoginActivity.class);
+        startActivity(mIntent);
     }
 }

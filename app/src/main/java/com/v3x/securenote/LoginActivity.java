@@ -172,7 +172,6 @@ public class LoginActivity extends AppCompatActivity {
 
     public void doLogin(final String username, final String password){
         showProgress(true);
-        String url = "http://10.0.2.2:5000/authentication";
         JSONObject requestData = new JSONObject();
 
         private_ephemeral = Encryption.toHex(SecureAPI.cryptrand(1024));
@@ -188,9 +187,8 @@ public class LoginActivity extends AppCompatActivity {
 
         }
 
-
-        JsonObjectRequest jsonReq = new JsonObjectRequest(
-                Request.Method.POST, url, requestData, new Response.Listener<JSONObject>() {
+        SecureAPI mApi = SecureAPI.getInstance();
+        mApi.post_endpoint(this,"/authentication",requestData,new Response.Listener<JSONObject>() {
             @Override
             public void onResponse(JSONObject response) {
                 Log.i("AUTH",response.toString());
@@ -207,7 +205,6 @@ public class LoginActivity extends AppCompatActivity {
                 showProgress(false);
             }
         });
-        NetworkQueue.getInstance(this).addToRequestQueue(jsonReq);
 
     }
 

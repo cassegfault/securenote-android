@@ -16,7 +16,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class APIRequest extends JsonObjectRequest {
-    public static String apiBaseUrl = "http://10.0.2.2:5000";
+    public static String apiBaseUrl = "https://securenote.v3x.pw/api";
     public Map<String, String> mHeaders = new HashMap<>();
 
     //  APIRequest(Request.Method.POST, "/verify-auth", mHeaders, successListener, errorListener);

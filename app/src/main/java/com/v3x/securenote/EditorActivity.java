@@ -12,7 +12,6 @@ import com.android.volley.Response;
 import com.android.volley.VolleyError;
 import com.v3x.securenote.models.NoteContent;
 import com.v3x.securenote.network.SecureAPI;
-import com.v3x.securenote.Encryption;
 
 import org.json.JSONException;
 import org.json.JSONObject;
