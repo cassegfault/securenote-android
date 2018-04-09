@@ -1,155 +1,108 @@
 package com.v3x.securenote;
 
+import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
+import android.support.design.widget.FloatingActionButton;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.support.v7.widget.LinearLayoutManager;
+import android.support.v7.widget.RecyclerView;
 import android.util.Log;
+import android.view.MotionEvent;
 import android.view.View;
-import android.widget.EditText;
-import android.widget.TextView;
 
-import com.android.volley.Request;
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
-import com.android.volley.toolbox.JsonObjectRequest;
-import com.v3x.securenote.network.APIRequest;
-import com.v3x.securenote.network.NetworkQueue;
+import com.v3x.securenote.models.NoteContent;
 import com.v3x.securenote.network.SecureAPI;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.math.BigInteger;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements NoteFragment.OnListFragmentInteractionListener  {
 
-    TextView mTextView;
-    EditText mUsername;
-    EditText mPassword;
-
-    String public_ephemeral;
-    String client_proof;
-    String shared_key;
-    String private_ephemeral;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        this.mTextView = (TextView)findViewById(R.id.mainText);
-        this.mUsername = (EditText)findViewById(R.id.username);
-        this.mPassword = (EditText)findViewById(R.id.password);
-    }
 
+        // Test whether or not we need to log in \ auth
+        //SharedPreferences prefs = this.getApplicationContext().getSharedPreferences("auth",Context.MODE_PRIVATE);
+        Context ctx = this.getApplicationContext();
+        SharedPreferences prefs =  ctx.getSharedPreferences("com.v3x.auth",Context.MODE_PRIVATE);
+        String testKey = prefs.getString("key", null);
 
-    public void doLogin(View v){
-        String url = "http://10.0.2.2:5000/authentication";
-        JSONObject requestData = new JSONObject();
-
-        private_ephemeral = "59cfb0fe6ad85f81c6cded10e77516d5fbd967938636ac08d02ff439df956bc8e787fc1defc1b285bb06a2c0fdf1d156c0594e85b854b097dd8ced8cf9c38fe55121ef616b574ecbec63d1478d23a1f50caaf35bb13b0cec0ff02c999239cc1ec048cceb90d7226bb16020d7557e1fef3520c894b9b4fc8b10b697418d068e4a";//Encryption.toHex(SecureAPI.cryptrand(1024));
-        BigInteger public_ephemeral_int = SecureAPI.g.modPow((new BigInteger(private_ephemeral, 16)).abs(), SecureAPI.N);
-
-        public_ephemeral = public_ephemeral_int.toString(16); //Encryption.toHex(public_ephemeral_int.toByteArray());
-
-        try {
-            requestData.put("username", "chris");
-            requestData.put("client_ephemeral", public_ephemeral);
-            Log.i("SRP", "Public Ephem: " + public_ephemeral);
-        } catch(JSONException e){
-
+        if(!SecureAPI.getInstance().isAuthenticated()) {
+            if (testKey != null) {
+                // Go to password decrypt
+                Intent mIntent = new Intent(MainActivity.this, PassphraseActivity.class);
+                MainActivity.this.startActivity(mIntent);
+            } else {
+                // Go to Login
+                Intent mIntent = new Intent(MainActivity.this, LoginActivity.class);
+                MainActivity.this.startActivity(mIntent);
+            }
         }
 
+        FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
 
-        JsonObjectRequest jsonReq = new JsonObjectRequest(
-                Request.Method.POST, url, requestData, new Response.Listener<JSONObject>() {
+        fab.setOnClickListener(new View.OnClickListener() {
             @Override
-            public void onResponse(JSONObject response) {
-                mTextView.setText(response.toString());
-                try {
-                    send_proof(response.getString("server_ephemeral"), response.getString("salt"), response.getString("auth_session"));
-                } catch(JSONException e) {
+            public void onClick(View view) {
 
-                }
-            }
-        }, new Response.ErrorListener() {
-            @Override
-            public void onErrorResponse(VolleyError error) {
-                mTextView.setText(error.toString());
+                Intent myIntent = new Intent(MainActivity.this, EditorActivity.class);
+                MainActivity.this.startActivity(myIntent);
+
             }
         });
-        NetworkQueue.getInstance(this).addToRequestQueue(jsonReq);
+
+        LinearLayoutManager llm = new LinearLayoutManager(this);
+        llm.setOrientation(LinearLayoutManager.VERTICAL);
+        RecyclerView rv = (RecyclerView)findViewById(R.id.note_list);
+
+        mViewAdapter = new NoteRecyclerViewAdapter(NoteContent.ITEMS, this);
+        rv.setLayoutManager(llm);
+        rv.setAdapter( mViewAdapter );
+        getNoteItems();
+    }
+
+    NoteRecyclerViewAdapter mViewAdapter;
+    @Override
+    public void onListFragmentInteraction(NoteContent.NoteItem item) {
 
     }
 
-    private void send_proof(final String server_ephemeral, String salt, String auth_session){
-        BigInteger server_ephemeral_int = new BigInteger(server_ephemeral, 16);
-        BigInteger private_ephemeral_int = new BigInteger(private_ephemeral, 16).abs();
-        String username = mUsername.getText().toString();
-        String password = mPassword.getText().toString();
-
-        final String private_key = SecureAPI.Hash(salt, username, password);
-        BigInteger private_key_int = new BigInteger(private_key, 16);
-
-        BigInteger verifier = SecureAPI.g.modPow(private_key_int, SecureAPI.N);
-        BigInteger u = new BigInteger(SecureAPI.Hash(public_ephemeral, server_ephemeral), 16);
-        BigInteger scl = server_ephemeral_int.subtract(SecureAPI.k.multiply(verifier));
-        BigInteger scr = private_ephemeral_int.add(u.multiply(private_key_int));
-        BigInteger sc = scl.abs().modPow(scr, SecureAPI.N);
-        shared_key = SecureAPI.Hash(sc.toString(16));
-
-
-        String xorVal = (new BigInteger(SecureAPI.Hash(SecureAPI.N),16)).xor(new BigInteger(SecureAPI.Hash(SecureAPI.g), 16)).toString(16);
-
-        client_proof = SecureAPI.Hash(
-                xorVal,
-                SecureAPI.Hash(username),
-                salt,
-                public_ephemeral,
-                server_ephemeral,
-                shared_key
-        );
-
-        JSONObject request_data = new JSONObject();
-        try {
-            request_data.put("client_proof",client_proof);
-            request_data.put("auth_session", auth_session);
-        } catch(JSONException e) {
-
-        }
-        final SecureAPI mApi = SecureAPI.getInstance();
-        //        JsonObjectRequest req = new JsonObjectRequest(Request.Method.POST, "http://10.0.2.2:5000/verify-auth", request_data,
-        mApi.post_endpoint(this.getApplicationContext(), "/verify-auth", request_data,  new Response.Listener<JSONObject>(){
+    protected void getNoteItems(){
+        NoteContent.clearItems();
+        SecureAPI mApi = SecureAPI.getInstance();
+        mApi.get_auth_endpoint(this.getApplicationContext(),"/notes",new Response.Listener<JSONObject>(){
             @Override
             public void onResponse(JSONObject response) {
-
-                String check = SecureAPI.Hash(public_ephemeral, client_proof, shared_key);
-                Boolean did_work = false;
                 try {
-                    if(check.equals(response.getString("server_proof"))){
-                        did_work = true;
-                        mApi.loadAuthData(response.getString("session_token"), response.getString("UID"), private_key);
-                    } else {
-                        mTextView.setText("bad proof: ".concat(check.concat(" ".concat(response.getString("server_proof")))));
+                    JSONArray notes = response.getJSONArray("notes");
+                    Log.i("SN","Notes: ".concat(String.valueOf(notes.length())));
+                    for (int i = 0; i < notes.length(); i++) {
+                        JSONObject noteItem = notes.getJSONObject(i);
+                        NoteContent.NoteItem note = new NoteContent.NoteItem(noteItem);
+                        SecureAPI.getInstance().decryptNote(note);
+                        NoteContent.addItem(note);
                     }
+                    mViewAdapter.notifyDataSetChanged();
                 } catch(JSONException e) {
-                    Log.i("JSON","Error with the json");
-                    mTextView.setText("json exception");
+                    Log.i("JSON","Problem reading notes");
                 }
-                if(did_work){
-                    mTextView.setText("Authenticated");
-                    Intent myIntent = new Intent(MainActivity.this, ListActivity.class);
-                    MainActivity.this.startActivity(myIntent);
-                } else {
-                    //mTextView.setText("Not Authenticated");
-                }
-
             }
         }, new Response.ErrorListener(){
             @Override
             public void onErrorResponse(VolleyError error) {
-                mTextView.setText("verify: ".concat(error.toString()));
+
             }
         });
-        //NetworkQueue.getInstance(this).addToRequestQueue(req);
     }
+
+
 }

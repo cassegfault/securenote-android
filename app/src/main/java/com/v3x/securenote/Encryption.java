@@ -2,6 +2,7 @@ package com.v3x.securenote;
 
 import android.util.Log;
 
+import java.io.UnsupportedEncodingException;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -27,21 +28,6 @@ public class Encryption {
         return digest.digest(data.getBytes());
     }
 
-    private static byte[] AesEncrypt(byte[] raw, byte[] clear) throws Exception {
-        SecretKeySpec skeySpec = new SecretKeySpec(raw, "AES");
-        Cipher cipher = Cipher.getInstance("AES");
-        cipher.init(Cipher.ENCRYPT_MODE, skeySpec);
-        byte[] encrypted = cipher.doFinal(clear);
-        return encrypted;
-    }
-
-    private static byte[] AesDecrypt(byte[] raw, byte[] encrypted) throws Exception {
-        SecretKeySpec skeySpec = new SecretKeySpec(raw, "AES");
-        Cipher cipher = Cipher.getInstance("AES");
-        cipher.init(Cipher.DECRYPT_MODE, skeySpec);
-        byte[] decrypted = cipher.doFinal(encrypted);
-        return decrypted;
-    }
     public static String AesDecrypt(String hexKey, String hexEncoded, String iv) {
         try {
             SecretKeySpec secret = new SecretKeySpec(toByte(hexKey), "AES");
@@ -51,13 +37,38 @@ public class Encryption {
             byte[] decrypted = cipher.doFinal(toByte(hexEncoded));
             return new String(decrypted, "UTF-8");
         } catch (Exception e){
-            Log.i("ENC",e.toString());
+            Log.e("ENC",e.toString());
+            return "";
+        }
+    }
+    public static String AesEncrypt(String hexKey, String clear, String iv){
+        try {
+            SecretKeySpec secret = new SecretKeySpec(toByte(hexKey), "AES");
+            Cipher cipher = Cipher.getInstance("AES/CBC/PKCS7Padding");
+
+            cipher.init(Cipher.ENCRYPT_MODE, secret, new IvParameterSpec(toByte(iv)));
+            byte[] encrypted = cipher.doFinal(toByte(clear));
+            return toHex(encrypted);
+        } catch (Exception e){
+            Log.e("ENC",e.toString());
             return "";
         }
     }
 
+    public static String cryptrand(int len){
+        SecureRandom rand = new SecureRandom();
+        byte random_bytes[] = new byte[len];
+        rand.nextBytes(random_bytes);
+
+        return toHex(random_bytes);
+    }
+
     public static String toHex(String txt) {
-        return toHex(txt.getBytes());
+        try {
+            return toHex(txt.getBytes("UTF-8"));
+        } catch (UnsupportedEncodingException e) {
+            return toHex(txt.getBytes());
+        }
     }
 
     public static String fromHex(String hex) {

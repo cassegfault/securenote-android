@@ -1,7 +1,11 @@
 package com.v3x.securenote;
 
+import android.content.Context;
+import android.content.Intent;
 import android.support.v7.widget.RecyclerView;
+import android.util.Log;
 import android.view.LayoutInflater;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
@@ -13,10 +17,11 @@ import java.util.List;
 
 public class NoteRecyclerViewAdapter extends RecyclerView.Adapter<NoteRecyclerViewAdapter.ViewHolder> {
     private List<NoteItem> mDataset;
+    public Context mContext;
 
-    // Provide a suitable constructor (depends on the kind of dataset)
-    public NoteRecyclerViewAdapter(List<NoteItem> myDataset) {
+    public NoteRecyclerViewAdapter(List<NoteItem> myDataset, Context ctx) {
         mDataset = myDataset;
+        mContext = ctx;
     }
 
     // Create new views (invoked by the layout manager)
@@ -31,11 +36,10 @@ public class NoteRecyclerViewAdapter extends RecyclerView.Adapter<NoteRecyclerVi
 
     // Replace the contents of a view (invoked by the layout manager)
     @Override
-    public void onBindViewHolder(ViewHolder holder, int position) {
-        // - get element from your dataset at this position
-        // - replace the contents of the view with that element
-        holder.mContentView.setText(mDataset.get(position).data);
-
+    public void onBindViewHolder(ViewHolder holder, final int position) {
+        holder.mBodyView.setText(mDataset.get(position).body);
+        holder.mTitleView.setText(mDataset.get(position).title);
+        holder.noteId = mDataset.get(position).id;
     }
 
     // Return the size of your dataset (invoked by the layout manager)
@@ -43,22 +47,32 @@ public class NoteRecyclerViewAdapter extends RecyclerView.Adapter<NoteRecyclerVi
     public int getItemCount() {
         return mDataset.size();
     }
+
     public class ViewHolder extends RecyclerView.ViewHolder {
         public final View mView;
-        public final TextView mIdView;
-        public final TextView mContentView;
+        public final TextView mTitleView;
+        public final TextView mBodyView;
+        public String noteId = "";
         public NoteItem mItem;
 
         public ViewHolder(View view) {
             super(view);
             mView = view;
-            mIdView = (TextView) view.findViewById(R.id.item_number);
-            mContentView = (TextView) view.findViewById(R.id.content);
+            mTitleView = (TextView) view.findViewById(R.id.item_title);
+            mBodyView = (TextView) view.findViewById(R.id.item_body);
+            view.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    Intent mIntent = new Intent(v.getContext(), EditorActivity.class);
+                    mIntent.putExtra("id",noteId);
+                    mContext.startActivity(mIntent);
+                }
+            });
         }
 
         @Override
         public String toString() {
-            return super.toString() + " '" + mContentView.getText() + "'";
+            return super.toString() + " '" + mBodyView.getText() + "'";
         }
     }
 }
